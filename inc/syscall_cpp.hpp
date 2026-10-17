@@ -1,0 +1,73 @@
+#ifndef SYSCALL_CPP_HPP
+#define SYSCALL_CPP_HPP
+
+#include "syscall_c.h"
+
+// Global new and delete operators redirected to system calls
+/*"The global new and delete operator functions should be implemented to
+wrap the mem_alloc and mem_free system calls, respectively. This way,
+the C++ new and delete operators will be redirected to these system calls."*/
+void* operator new(size_t);
+void operator delete(void*) noexcept;
+
+void* operator new[](size_t);
+void operator delete[](void*) noexcept;
+
+class Thread {
+public:
+    Thread(void(*body)(void*), void* arg);
+    virtual ~Thread();
+
+    int start();
+
+    static void dispatch();
+    static int sleep(time_t);
+    static int getId();
+    void join();
+
+protected:
+    Thread();
+    virtual void run() {}
+
+private:
+    thread_t myHandle;
+    void(*body)(void*);
+    void* arg;
+
+    // The body passed to the kernel
+    // Receives a pointer to the object itself, then chooses between a function pointer and the polymorphic run method
+    static void wrapper(void* threadObject);
+};
+
+class Semaphore {
+public:
+    Semaphore(unsigned init = 1);
+    virtual ~Semaphore();
+
+    int wait();
+    int signal();
+
+private:
+    sem_t myHandle;
+};
+
+class PeriodicThread : public Thread {
+public:
+    void terminate();
+
+protected:
+    PeriodicThread(time_t period);
+    virtual void periodicActivation() {}
+    void run() override;
+
+private:
+    time_t period;
+};
+
+class Console {
+public:
+    static char getc();
+    static void putc(char);
+};
+
+#endif
